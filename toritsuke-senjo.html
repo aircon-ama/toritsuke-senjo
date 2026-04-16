@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>エアコンマートアカデミー｜損益分岐点シミュレーター</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#F1EFE8;color:#1a1a1a;padding:1.5rem;min-height:100vh}
+.page{max-width:980px;margin:0 auto}
+.page-header{margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid rgba(0,0,0,0.1)}
+.page-header h1{font-size:19px;font-weight:500;margin-bottom:4px}
+.page-header p{font-size:13px;color:#5F5E5A}
+.tab-row{display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap}
+.tab{padding:7px 16px;font-size:13px;border:0.5px solid rgba(0,0,0,0.2);border-radius:8px;background:#fff;color:#5F5E5A;cursor:pointer;white-space:nowrap}
+.tab:hover{background:#F1EFE8}
+.tab.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.pane{display:none}.pane.active{display:block}
+
+/* 2カラムレイアウト */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+@media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+/* セクションボックス */
+.sbox{background:#fff;border:0.5px solid rgba(0,0,0,0.12);border-radius:12px;padding:1rem 1.25rem;margin-bottom:.85rem}
+.sbox-title{font-size:12px;font-weight:500;color:#5F5E5A;letter-spacing:.06em;text-transform:uppercase;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:0.5px solid rgba(0,0,0,0.1)}
+
+/* 入力行 */
+.irow{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.ilabel{flex:1;min-width:150px}
+.ilabel label{font-size:14px;color:#1a1a1a;display:block}
+.ilabel .hint{font-size:11px;color:#888780;margin-top:2px;line-height:1.5}
+.ictl{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+input[type=number]{font-size:14px;text-align:right;padding:5px 8px;border:0.5px solid rgba(0,0,0,0.22);border-radius:8px;background:#fff;color:#1a1a1a}
+input[type=range]{accent-color:#185FA5}
+.unit{font-size:12px;color:#888780;white-space:nowrap}
+.note{font-size:12px;border-radius:6px;padding:6px 10px;margin-top:4px;line-height:1.6}
+.note-gray{background:#F1EFE8;color:#5F5E5A}
+.note-green{background:#EAF3DE;color:#27500A}
+.note-amber{background:#FAEEDA;color:#633806}
+.note-blue{background:#E6F1FB;color:#0C447C}
+.note-red{background:#FCEBEB;color:#791F1F}
+
+/* サブセクションラベル */
+.sub-label{font-size:12px;font-weight:500;color:#888780;margin:.7rem 0 5px;padding-bottom:3px;border-bottom:0.5px solid rgba(0,0,0,0.07)}
+
+/* メトリクスカード */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:10px;margin-bottom:1rem}
+.mc{background:#F1EFE8;border-radius:8px;padding:.8rem 1rem}
+.mc .ml{font-size:12px;color:#5F5E5A;margin-bottom:4px}
+.mc .mv{font-size:17px;font-weight:500;color:#1a1a1a}
+.mc.blue .mv{color:#185FA5}
+.mc.amber .mv{color:#BA7517}
+.mc.red .mv{color:#A32D2D}
+.mc.green .mv{color:#3B6D11}
+
+/* 明細行 */
+.br{display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid rgba(0,0,0,0.07);font-size:13px;gap:8px}
+.br:last-child{border-bottom:none}
+.br .bl{color:#5F5E5A}
+.br .bv{font-weight:500;color:#1a1a1a;white-space:nowrap}
+.br.ind .bl{padding-left:12px;color:#888780;font-size:12px}
+.br.ind .bv{font-size:12px}
+.br.tot{border-top:1.5px solid rgba(0,0,0,0.2);margin-top:6px;padding-top:8px;font-weight:500}
+.br.tot .bl{color:#1a1a1a;font-size:14px}
+.br.tot .bv{font-size:14px}
+
+/* ステータスバー */
+.sbar-wrap{margin:.75rem 0}
+.sbar-lbl{font-size:12px;color:#5F5E5A;margin-bottom:5px}
+.sbar{height:28px;border-radius:8px;background:#F1EFE8;position:relative;overflow:hidden}
+.sbar-fill{height:100%;border-radius:8px;transition:width .4s}
+.sbar-txt{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;height:100%}
+.notice{font-size:13px;border-radius:8px;padding:10px 14px;line-height:1.65;margin-top:6px}
+.notice.ok{background:#EAF3DE;color:#27500A}
+.notice.ng{background:#FCEBEB;color:#A32D2D}
+
+/* チャート */
+.chart-wrap{position:relative;width:100%;height:280px;margin-top:.75rem}
+.legend{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:4px;font-size:12px;color:#5F5E5A}
+
+/* 生徒費用パネル */
+.ps-cat{font-size:12px;font-weight:500;color:#5F5E5A;letter-spacing:.04em;text-transform:uppercase;margin:.7rem 0 4px;padding-bottom:3px;border-bottom:0.5px solid rgba(0,0,0,0.08)}
+.ps-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:0.5px solid rgba(0,0,0,0.05)}
+.ps-row:last-child{border-bottom:none}
+.ps-row .pl{color:#5F5E5A}.ps-row .pv{font-weight:500;color:#1a1a1a;white-space:nowrap}
+.ps-row.sub .pl{padding-left:10px;color:#888780;font-size:12px}.ps-row.sub .pv{font-size:12px}
+.ps-total{display:flex;justify-content:space-between;padding:9px 0;border-top:1.5px solid rgba(0,0,0,0.2);margin-top:6px;font-weight:500;font-size:14px}
+.margin-box{background:#EAF3DE;border-radius:8px;padding:10px 14px;margin-top:8px;display:flex;justify-content:space-between;align-items:center}
+.margin-box .ml2{font-size:13px;color:#27500A}
+.margin-box .mv2{font-size:18px;font-weight:500;color:#3B6D11}
+
+/* 洗浄タブ バッジ */
+.badge-new{display:inline-block;font-size:10px;font-weight:500;background:#FAEEDA;color:#633806;border-radius:4px;padding:2px 7px;margin-left:6px;vertical-align:middle}
+.badge-oct{display:inline-block;font-size:10px;font-weight:500;background:#EAF3DE;color:#27500A;border-radius:4px;padding:2px 7px;margin-left:4px;vertical-align:middle}
+
+/* 洗浄タブ 比較カード */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:.85rem}
+@media(max-width:600px){.compare-grid{grid-template-columns:1fr}}
+.ccard{background:#fff;border:0.5px solid rgba(0,0,0,0.12);border-radius:12px;padding:1rem 1.25rem}
+.ccard-title{font-size:14px;font-weight:500;margin-bottom:.6rem;color:#1a1a1a}
+.ccard.highlight{border:2px solid #3B6D11}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="page-header">
+  <h1>エアコンマートアカデミー｜損益分岐点シミュレーター</h1>
+  <p>エアコン取付講習・エアコン洗浄講習（10月〜）の収支シミュレーション</p>
+</div>
+
+<div class="tab-row">
+  <button class="tab active" onclick="sw('install',event)">取付講習（現行）</button>
+  <button class="tab" onclick="sw('cleaning',event)">洗浄講習（10月〜）<span class="badge-new">NEW</span></button>
+</div>
+
+<!-- ══════════════════════════════════════
+     取付講習タブ
+══════════════════════════════════════ -->
+<div class="pane active" id="pane-install">
+
+<!-- 受講者数 -->
+<div class="sbox">
+  <div class="sbox-title">会場別受講者数</div>
+  <div class="irow">
+    <div class="ilabel"><label>大阪松原（MAX 8名）</label><div class="hint" id="osaka-note">—</div></div>
+    <div class="ictl">
+      <input type="range" id="osaka-r" min="2" max="8" step="2" value="8" oninput="syncO(this.value)" style="width:110px">
+      <input type="number" id="osaka-n" value="8" min="2" max="8" style="width:58px" onchange="syncON(this.value)">
+      <span class="unit">名</span>
+    </div>
+  </div>
+  <div class="irow">
+    <div class="ilabel"><label>埼玉大宮（MAX 10名）</label><div class="hint" id="saitama-note">—</div></div>
+    <div class="ictl">
+      <input type="range" id="saitama-r" min="2" max="10" step="2" value="10" oninput="syncS(this.value)" style="width:110px">
+      <input type="number" id="saitama-n" value="10" min="2" max="10" style="width:58px" onchange="syncSN(this.value)">
+      <span class="unit">名</span>
+    </div>
+  </div>
+</div>
+
+<!-- 受講料・手数料 + 限界利益 -->
+<div class="two-col">
+<div class="sbox">
+  <div class="sbox-title">受講料・手数料</div>
+  <div class="irow">
+    <div class="ilabel"><label>受講料（税込）</label></div>
+    <div class="ictl"><input type="number" id="price" value="87780" style="width:100px" onchange="calc()"><span class="unit">円</span></div>
+  </div>
+  <div class="irow">
+    <div class="ilabel"><label>遠方者割引</label></div>
+    <div class="ictl"><input type="number" id="discount" value="4000" style="width:80px" onchange="calc()"><span class="unit">円</span></div>
+  </div>
+  <div class="irow">
+    <div class="ilabel"><label>遠方者割合</label></div>
+    <div class="ictl">
+      <input type="range" id="remote-r" min="0" max="100" step="5" value="50" oninput="syncRem(this.value)" style="width:100px">
+      <input type="number" id="remote-pct" value="50" style="width:58px" onchange="syncRemN(this.value)">
+      <span class="unit">%</span>
+    </div>
+  </div>
+  <div class="irow">
+    <div class="ilabel"><label>クレカ決済割合</label><div class="hint">クレカ3.6% / 銀行1.5%</div></div>
+    <div class="ictl"><input type="number" id="card-pct" value="50" style="width:58px" onchange="calc()"><span class="unit">%</span></div>
+  </div>
+</div>
+
+<!-- 1名あたり限界利益 -->
+<div class="sbox">
+  <div class="sbox-title">受講者 1名あたりの限界利益</div>
+  <div class="ps-cat">収入</div>
+  <div class="ps-row"><span class="pl">受講料（税込）</span><span class="pv" id="li-price">—</span></div>
+  <div class="ps-row sub"><span class="pl">遠方者割引（平均）</span><span class="pv" id="li-disc">—</span></div>
+  <div class="ps-row sub"><span class="pl">決済手数料（平均）</span><span class="pv" id="li-fee">—</span></div>
+  <div class="ps-row"><span class="pl" style="font-weight:500;color:#1a1a1a">実質収入 / 1名</span><span class="pv" id="li-rev" style="color:#185FA5">—</span></div>
+  <div class="ps-cat" style="margin-top:.6rem">変動費</div>
+  <div class="ps-row sub"><span class="pl">材料費（ペア・VVF・IV等）</span><span class="pv" id="li-mat">—</span></div>
+  <div class="ps-row sub"><span class="pl">テキスト・印刷・ノベルティ</span><span class="pv">1,250円</span></div>
+  <div class="ps-row sub"><span class="pl">飲食・手袋</span><span class="pv">1,100円</span></div>
+  <div class="ps-row"><span class="pl" style="font-weight:500;color:#1a1a1a">変動費合計 / 1名</span><span class="pv" id="li-var" style="color:#BA7517">—</span></div>
+  <div class="margin-box" style="margin-top:10px">
+    <span class="ml2">限界利益（貢献利益）/ 1名</span>
+    <span class="mv2" id="li-margin">—</span>
+  </div>
+</div>
+</div>
+
+<!-- 固定費 -->
+<div class="sbox">
+  <div class="sbox-title">固定費（月額）</div>
+
+  <div class="sub-label">人件費</div>
+  <div class="irow">
+    <div class="ilabel"><label>人件費合計</label><div class="hint">立ち上げ時：講師20万 + 補助スタッフ10万 + 宮良40万 = 700,000円/月</div></div>
+    <div class="ictl"><input type="number" id="labor" value="700000" style="width:100px" onchange="calc()"><span class="unit">円/月</span></div>
+  </div>
+
+  <div class="sub-label">出張費</div>
+  <div class="irow">
+    <div class="ilabel">
+      <label>出張交通費（往復）</label>
+      <div class="hint">河内松原→新大阪(約400円)+のぞみ指定席(14,720円)+東北新幹線自由席(1,660円)=片道16,780円 × 往復 ≒ 33,560円/名</div>
+    </div>
+    <div class="ictl">
+      <input type="number" id="trans-unit" value="33560" style="width:90px" onchange="calc()">
+      <span class="unit">円/名</span>
+      <span style="font-size:13px;color:#5F5E5A">×</span>
+      <input type="range" id="trans-n-r" min="1" max="4" step="1" value="3" oninput="syncTN(this.value)" style="width:80px">
+      <input type="number" id="trans-n" value="3" min="1" max="4" style="width:48px" onchange="syncTNN(this.value)">
+      <span class="unit">名</span>
+      <span style="font-size:13px;font-weight:500;color:#1a1a1a" id="disp-trans">—</span>
+    </div>
+  </div>
+  <div class="note note-blue">埼玉在住のサブ講師が確保できれば対象者が減り大幅削減可。最終的には大阪→埼玉の出張自体をゼロにできます。</div>
+
+  <div class="sub-label">宿泊費</div>
+  <div class="irow">
+    <div class="ilabel">
+      <label>宿泊費（月額合計）</label>
+      <div class="hint">現在想定：8,000円×2泊×3名=48,000円。Airbnb自社物件運用後は実質0円。繁忙期・物価高を考慮しMAX 60,000円で設定。</div>
+    </div>
+    <div class="ictl">
+      <input type="range" id="hotel-r" min="0" max="60000" step="1000" value="48000" oninput="syncHotel(this.value)" style="width:110px">
+      <input type="number" id="hotel" value="48000" style="width:85px" onchange="syncHotelN(this.value)">
+      <span class="unit">円/月</span>
+    </div>
+  </div>
+  <div class="note note-green">Airbnb運営が軌道に乗ると宿泊費は0円。月48,000円がそのままコスト削減になります。</div>
+
+  <div class="sub-label">会場費</div>
+  <div class="irow">
+    <div class="ilabel"><label>大阪松原</label><div class="hint">自社ビルのため0円</div></div>
+    <div style="font-size:14px;color:#888780;padding-top:4px">0円/月</div>
+  </div>
+  <div class="irow">
+    <div class="ilabel"><label>埼玉大宮</label><div class="hint">家賃・電気代含む（暫定）</div></div>
+    <div class="ictl"><input type="number" id="venue" value="250000" style="width:100px" onchange="calc()"><span class="unit">円/月</span></div>
+  </div>
+
+  <div class="sub-label">研修機材・通信</div>
+  <div class="irow">
+    <div class="ilabel">
+      <label>Wi-Fi</label>
+      <div class="hint">各会場のネット回線費用</div>
+    </div>
+    <div class="ictl"><input type="number" id="wifi" value="5000" style="width:90px" onchange="calc()"><span class="unit">円/月</span></div>
+  </div>
+  <div class="irow">
+    <div class="ilabel">
+      <label>研修機材</label>
+      <div class="hint">実習用中古エアコン本体・据付板・実習台などの月額換算。22,000円/台 − スクラップ回収2,000円 = 実質20,000円 ÷ 3ヶ月（入替サイクル）× 台数。スプリングベンダー導入により入替サイクル延長の可能性あり。</div>
+    </div>
+    <div class="ictl"><input type="number" id="equip" value="13333" style="width:90px" onchange="calc()"><span class="unit">円/月</span></div>
+  </div>
+
+  <div class="sub-label">広告費</div>
+  <div class="irow">
+    <div class="ilabel"><label>広告費</label></div>
+    <div class="ictl">
+      <input type="range" id="ads-r" min="0" max="200000" step="5000" value="50000" oninput="syncAds(this.value)" style="width:110px">
+      <input type="number" id="ads" value="50000" style="width:85px" onchange="syncAdsN(this.value)">
+      <span class="unit">円/月</span>
+    </div>
+  </div>
+  <div class="note note-amber">現状：Google・Yahoo!リスティング広告に月5万円。YouTubeでの動画発信が定着すると段階的に削減可能（目標：月0〜1万円）。安定まで約1年は現行維持が現実的。</div>
+
+  <div class="sub-label">動画プラットフォーム</div>
+  <div class="irow">
+    <div class="ilabel"><label>プラットフォーム費</label><div class="hint">Podia $39≒5,600円 / Thinkific $49≒7,000円 / Uscreen $149≒22,000円</div></div>
+    <div class="ictl"><input type="number" id="platform" value="5600" style="width:90px" onchange="calc()"><span class="unit">円/月</span></div>
+  </div>
+
+  <div class="sub-label">その他</div>
+  <div class="irow">
+    <div class="ilabel">
+      <label>産業廃棄物処理費 + 予備費</label>
+      <div class="hint">産廃：月5,000円固定（廃配管・廃材の処分費）｜予備費：月40,000円確保（突発的な資材補充・機器故障などに備えた予備枠）</div>
+    </div>
+    <div class="ictl"><input type="number" id="misc" value="45000" style="width:90px" onchange="calc()"><span class="unit">円/月</span></div>
+  </div>
+</div>
+
+<!-- 追加収入 -->
+<div class="sbox">
+  <div class="sbox-title">追加収入（新収益源）</div>
+
+  <div class="sub-label">動画サブスク</div>
+  <div class="irow">
+    <div class="ilabel">
+      <label>卒業生限定プラン（980円）</label>
+      <div class="hint">10月ローンチ時：卒業生50名への一斉案内想定</div>
+    </div>
+    <div class="ictl">
+      <input type="range" id="sub-grad-r" min="0" max="100" step="5" value="50" oninput="syncSubG(this.value)" style="width:100px">
+      <input type="number" id="sub-grad" value="50" style="width:60px" onchange="syncSubGN(this.value)">
+      <span class="unit">名 × 980円</span>
+      <span style="font-size:13px;font-weight:500;color:#3B6D11" id="disp-sub-grad">—</span>
+    </div>
+  </div>
+  <div class="irow">
+    <div class="ilabel">
+      <label>ベーシックプラン（2,980円）</label>
+      <div class="hint">一般向け。取付動画4種×各30分</div>
+    </div>
+    <div class="ictl">
+      <input type="range" id="sub-basic-r" min="0" max="200" step="5" value="0" oninput="syncSubB(this.value)" style="width:100px">
+      <input type="number" id="sub-basic" value="0" style="width:60px" onchange="syncSubBN(this.value)">
+      <span class="unit">名 × 2,980円</span>
+      <span style="font-size:13px;font-weight:500;color:#3B6D11" id="disp-sub-basic">—</span>
+    </div>
+  </div>
+  <div class="irow">
+    <div class="ilabel">
+      <label>ビジネスプラン（4,980円）</label>
+      <div class="hint">プロ向け追加工事動画（化粧カバー・公団スリーブ等）</div>
+    </div>
+    <div class="ictl">
+      <input type="range" id="sub-biz-r" min="0" max="200" step="5" value="0" oninput="syncSubBiz(this.value)" style="width:100px">
+      <input type="number" id="sub-biz" value="0" style="width:60px" onchange="syncSubBizN(this.value)">
+      <span class="unit">名 × 4,980円</span>
+      <span style="font-size:13px;font-weight:500;color:#3B6D11" id="disp-sub-biz">—</span>
+    </div>
+  </div>
+
+  <div class="sub-label">その他収益</div>
+  <div class="irow">
+    <div class="ilabel"><label>Airbnb収益（月間純利益）</label><div class="hint">家賃・清掃費等差し引き後。講師3名の宿泊費（約48,000円）をペイできればOK。</div></div>
+    <div class="ictl">
+      <input type="range" id="airbnb-r" min="0" max="300000" step="5000" value="0" oninput="syncAirbnb(this.value)" style="width:100px">
+      <input type="number" id="airbnb" value="0" style="width:85px" onchange="syncAirbnbN(this.value)">
+      <span class="unit">円/月</span>
+    </div>
+  </div>
+  <div class="irow">
+    <div class="ilabel"><label>人材媒体掲載料</label><div class="hint">親方掲載数 × 月額</div></div>
+    <div class="ictl">
+      <input type="number" id="media-n" value="0" style="width:58px" onchange="calc()">
+      <span class="unit">社 ×</span>
+      <input type="number" id="media-p" value="4000" style="width:75px" onchange="calc()">
+      <span class="unit">円/月</span>
+    </div>
+  </div>
+</div>
+
+<!-- メトリクス -->
+<div class="metrics">
+  <div class="mc blue"><div class="ml">月間固定費合計</div><div class="mv" id="m-fixed">—</div></div>
+  <div class="mc amber"><div class="ml">変動費 / 1名</div><div class="mv" id="m-var">—</div></div>
+  <div class="mc green"><div class="ml">追加収入（月）</div><div class="mv" id="m-extra">—</div></div>
+  <div class="mc"><div class="ml">限界利益 / 1名</div><div class="mv" id="m-cont">—</div></div>
+</div>
+
+<!-- 損益分岐点 + 生徒費用 2カラム -->
+<div class="two-col">
+
+<!-- 損益分岐点 -->
+<div>
+<div class="sbox">
+  <div class="sbox-title">損益分岐点</div>
+  <div class="br"><span class="bl">月間固定費合計</span><span class="bv" id="bd-fixed">—</span></div>
+  <div class="br ind"><span class="bl">うち 出張交通費</span><span class="bv" id="bd-trans">—</span></div>
+  <div class="br ind"><span class="bl">うち 宿泊費</span><span class="bv" id="bd-hotel">—</span></div>
+  <div class="br"><span class="bl">月間追加収入（サブスク等）</span><span class="bv" id="bd-extra">—</span></div>
+  <div class="br"><span class="bl">実質固定費負担</span><span class="bv" id="bd-netfixed">—</span></div>
+  <div class="br"><span class="bl">限界利益 / 1名</span><span class="bv" id="bd-cont">—</span></div>
+  <div class="br tot"><span class="bl">損益分岐点（月間最低受講者数）</span><span class="bv" id="bd-bep">—</span></div>
+  <div class="br ind"><span class="bl">大阪 最低必要人数</span><span class="bv" id="bd-o-min">—</span></div>
+  <div class="br ind"><span class="bl">埼玉 最低必要人数</span><span class="bv" id="bd-s-min">—</span></div>
+  <div class="br ind"><span class="bl">大阪 充填率</span><span class="bv" id="bd-o-pct">—</span></div>
+  <div class="br ind"><span class="bl">埼玉 充填率</span><span class="bv" id="bd-s-pct">—</span></div>
+  <div class="sbar-wrap">
+    <div class="sbar-lbl" id="sbar-lbl">—</div>
+    <div class="sbar"><div class="sbar-fill" id="sbar-fill"></div><div class="sbar-txt" id="sbar-txt">—</div></div>
+  </div>
+  <div class="notice" id="bep-notice">—</div>
+</div>
+<div class="sbox">
+  <div class="sbox-title">月間損益</div>
+  <div class="br"><span class="bl">講習売上</span><span class="bv" id="bd-rev">—</span></div>
+  <div class="br"><span class="bl">追加収入合計</span><span class="bv" id="bd-extra2">—</span></div>
+  <div class="br"><span class="bl">月間変動費</span><span class="bv" id="bd-varT">—</span></div>
+  <div class="br"><span class="bl">月間固定費</span><span class="bv" id="bd-fixedT">—</span></div>
+  <div class="br tot"><span class="bl">月間損益</span><span class="bv" id="bd-profit">—</span></div>
+  <div class="br"><span class="bl">年間損益（×12）</span><span class="bv" id="bd-annual">—</span></div>
+</div>
+</div>
+
+<!-- 生徒費用/1名 -->
+<div>
+<div class="sbox">
+  <div class="sbox-title">生徒費用 / 1名あたり（変動費明細）</div>
+
+  <div class="ps-cat">材料費（2名1ペア・使いまわし差引後）</div>
+  <div class="ps-row sub"><span class="pl">ペアコイル 2分3分（実費5m/組 ÷ 2名）</span><span class="pv" id="ps-pair">—</span></div>
+  <div class="ps-row sub"><span class="pl">VVF 1.6mm 3芯（実費6m/組 ÷ 2名）</span><span class="pv" id="ps-vvf">—</span></div>
+  <div class="ps-row sub"><span class="pl">IV線 1.6mm（60円 × 1m）</span><span class="pv">60円</span></div>
+  <div class="ps-row sub"><span class="pl">配管テープ ネオピタ（310円）</span><span class="pv">310円</span></div>
+  <div class="ps-row sub"><span class="pl">ビニールテープ（150円）</span><span class="pv">150円</span></div>
+  <div class="ps-row sub"><span class="pl">エアコン用パテ（200円）</span><span class="pv">200円</span></div>
+  <div class="ps-row sub"><span class="pl">ボードアンカー（40円×10本）</span><span class="pv">400円</span></div>
+  <div class="ps-row"><span class="pl" style="font-weight:500;color:#1a1a1a">材料費 小計</span><span class="pv" id="ps-mat">—</span></div>
+
+  <div class="ps-cat">テキスト・印刷物</div>
+  <div class="ps-row sub"><span class="pl">教科書（1,000円）</span><span class="pv">1,000円</span></div>
+  <div class="ps-row sub"><span class="pl">修了証（100円）</span><span class="pv">100円</span></div>
+  <div class="ps-row sub"><span class="pl">ノベルティ 缶バッジ+シール（150円）</span><span class="pv">150円</span></div>
+  <div class="ps-row"><span class="pl" style="font-weight:500;color:#1a1a1a">小計</span><span class="pv">1,250円</span></div>
+
+  <div class="ps-cat">飲食・安全</div>
+  <div class="ps-row sub"><span class="pl">昼食・飲み物（1,000円）</span><span class="pv">1,000円</span></div>
+  <div class="ps-row sub"><span class="pl">手袋（100円）</span><span class="pv">100円</span></div>
+  <div class="ps-row"><span class="pl" style="font-weight:500;color:#1a1a1a">小計</span><span class="pv">1,100円</span></div>
+
+  <div class="ps-cat">決済・割引コスト（平均按分）</div>
+  <div class="ps-row sub"><span class="pl">遠方者割引</span><span class="pv" id="ps-disc">—</span></div>
+  <div class="ps-row sub"><span class="pl">決済手数料</span><span class="pv" id="ps-fee">—</span></div>
+  <div class="ps-row"><span class="pl" style="font-weight:500;color:#1a1a1a">小計</span><span class="pv" id="ps-pay">—</span></div>
+
+  <div class="ps-total">
+    <span style="color:#1a1a1a">変動費合計 / 1名</span>
+    <span style="color:#A32D2D" id="ps-total-v">—</span>
+  </div>
+
+  <div class="ps-cat" style="margin-top:.75rem">収支サマリー</div>
+  <div class="ps-row"><span class="pl">実質収入 / 1名</span><span class="pv" id="ps-rev" style="color:#185FA5">—</span></div>
+  <div class="ps-row"><span class="pl">変動費 / 1名</span><span class="pv" id="ps-var2" style="color:#BA7517">—</span></div>
+  <div class="margin-box">
+    <span class="ml2">限界利益 / 1名</span>
+    <span class="mv2" id="ps-margin">—</span>
+  </div>
+
+  <div class="ps-cat" style="margin-top:.75rem">ペアコイル・VVF 補足</div>
+  <div class="ps-row sub"><span class="pl">ペアコイル 使用量 / 組</span><span class="pv">12m</span></div>
+  <div class="ps-row sub"><span class="pl">うち次回流用（3・4回目）</span><span class="pv">7m → 実費5m/組</span></div>
+  <div class="ps-row sub"><span class="pl">VVF 使用量 / 組</span><span class="pv">16m</span></div>
+  <div class="ps-row sub"><span class="pl">うち次回流用（3・4回目）</span><span class="pv">8m → 実費6m/組</span></div>
+
+  <div class="ps-cat" style="margin-top:.75rem">単価調整</div>
+  <div class="irow" style="margin-bottom:5px">
+    <div style="flex:1;font-size:13px;color:#1a1a1a">ペアコイル単価（円/m）</div>
+    <input type="number" id="pair-unit" value="320" style="width:75px" onchange="calc()">
+    <span class="unit">円/m</span>
+  </div>
+</div>
+</div>
+
+</div><!-- end two-col -->
+
+<div class="chart-wrap">
+  <canvas id="bepChart" role="img" aria-label="受講者数と損益の関係グラフ">受講者数と損益の関係</canvas>
+</div>
+<div class="legend" id="chart-legend"></div>
+
+</div><!-- end pane-install -->
+
+<!-- ══════════════════════════════════════
+     洗浄講習タブ
+══════════════════════════════════════ -->
+<div class="pane" id="pane-cleaning">
+
+<div class="sbox">
+  <div class="sbox-title">エアコン洗浄講習 — 10月〜追加<span class="badge-oct">2025年10月〜</span></div>
+  <p style="font-size:13px;color:#5F5E5A;line-height:1.75;margin-bottom:.75rem">
+    エアコン洗浄講習をサブ講師・宮良が兼任で運営します。これにより<strong style="font-weight:500">取付講習と洗浄講習で固定費を分担</strong>でき、1講習あたりの固定費負担が実質半分になります。<br>
+    会場・人件費・Wi-Fi・研修機材・出張費など多くの固定費を2講習で割り算できるため、収益性が大幅に改善します。
+  </p>
+</div>
+
+<div class="compare-grid">
+  <div class="ccard">
+    <div class="ccard-title">取付講習のみ（現状）</div>
+    <div class="br"><span class="bl">月間固定費</span><span class="bv" id="cl-fixed-before">—</span></div>
+    <div class="br"><span class="bl">1講習あたり固定費</span><span class="bv" id="cl-per-before">—</span></div>
+    <div class="br"><span class="bl">月2講習（大阪+埼玉）</span><span class="bv">2回</span></div>
+  </div>
+  <div class="ccard highlight">
+    <div class="ccard-title" style="color:#3B6D11">取付 + 洗浄（10月以降）<span class="badge-oct">推奨</span></div>
+    <div class="br"><span class="bl">月間固定費（半分負担）</span><span class="bv" id="cl-fixed-after">—</span></div>
+    <div class="br"><span class="bl">1講習あたり固定費</span><span class="bv" id="cl-per-after">—</span></div>
+    <div class="br"><span class="bl">月4講習（取付2回+洗浄2回）</span><span class="bv">4回</span></div>
+    <div class="br" style="margin-top:4px;padding-top:6px;border-top:0.5px solid rgba(0,0,0,0.1)"><span class="bl" style="color:#3B6D11;font-weight:500">固定費削減効果</span><span class="bv" id="cl-saving" style="color:#3B6D11">—</span></div>
+  </div>
+</div>
+
+<!-- 洗浄講習の設定 -->
+<div class="sbox">
+  <div class="sbox-title">洗浄講習の設定</div>
+  <div class="irow">
+    <div class="ilabel"><label>洗浄講習 人件費（半分負担）</label><div class="hint">取付講習と兼任のため人件費を折半。10月以降は取付の人件費負担が半減する想定。</div></div>
+    <div class="ictl"><input type="number" id="cl-labor" value="350000" style="width:100px" onchange="calcCleaning()"><span class="unit">円/月</span></div>
+  </div>
+  <div class="irow">
+    <div class="ilabel"><label>洗浄講習 受講料</label><div class="hint">取付と異なる受講料設定が可能</div></div>
+    <div class="ictl"><input type="number" id="cl-price" value="87780" style="width:100px" onchange="calcCleaning()"><span class="unit">円</span></div>
+  </div>
+  <div class="irow">
+    <div class="ilabel"><label>洗浄講習 受講者数（月計）</label><div class="hint">大阪+埼玉の合計</div></div>
+    <div class="ictl">
+      <input type="range" id="cl-n-r" min="2" max="18" step="2" value="10" oninput="syncCLN(this.value)" style="width:110px">
+      <input type="number" id="cl-n" value="10" min="2" max="18" style="width:60px" onchange="syncCLNN(this.value)">
+      <span class="unit">名</span>
+    </div>
+  </div>
+</div>
+
+<!-- 洗浄サブスク -->
+<div class="sbox">
+  <div class="sbox-title">洗浄動画サブスク収益</div>
+  <div class="irow">
+    <div class="ilabel"><label>ベーシック分解動画（2,980円）</label></div>
+    <div class="ictl">
+      <input type="range" id="cls-basic-r" min="0" max="200" step="5" value="0" oninput="syncCLSB(this.value)" style="width:100px">
+      <input type="number" id="cls-basic" value="0" style="width:60px" onchange="syncCLSBN(this.value)">
+      <span class="unit">名 × 2,980円</span>
+      <span style="font-size:13px;font-weight:500;color:#3B6D11" id="disp-cls-basic">—</span>
+    </div>
+  </div>
+  <div class="irow">
+    <div class="ilabel"><label>完全分解動画（4,980円）</label></div>
+    <div class="ictl">
+      <input type="range" id="cls-full-r" min="0" max="200" step="5" value="0" oninput="syncCLSF(this.value)" style="width:100px">
+      <input type="number" id="cls-full" value="0" style="width:60px" onchange="syncCLSFN(this.value)">
+      <span class="unit">名 × 4,980円</span>
+      <span style="font-size:13px;font-weight:500;color:#3B6D11" id="disp-cls-full">—</span>
+    </div>
+  </div>
+  <div class="note note-green" style="margin-top:6px">洗浄動画はエアコン取付より解約率が低い高粘着コンテンツ。機種ごとの分解方法が異なるため「新モデル対応」更新で継続率が維持できます。</div>
+</div>
+
+<!-- 洗浄 メトリクス -->
+<div class="metrics">
+  <div class="mc blue"><div class="ml">取付 固定費負担（半分）</div><div class="mv" id="cl-m-fixed">—</div></div>
+  <div class="mc green"><div class="ml">洗浄 追加収入（月）</div><div class="mv" id="cl-m-extra">—</div></div>
+  <div class="mc amber"><div class="ml">洗浄 受講料収入</div><div class="mv" id="cl-m-rev">—</div></div>
+  <div class="mc green"><div class="ml">洗浄 月間損益貢献</div><div class="mv" id="cl-m-profit">—</div></div>
+</div>
+
+<!-- 効果比較 -->
+<div class="sbox">
+  <div class="sbox-title">取付+洗浄 合算 月間損益（10月以降）</div>
+  <div class="br"><span class="bl">取付講習 月間損益（現行設定より）</span><span class="bv" id="cl-install-profit">—</span></div>
+  <div class="br"><span class="bl">洗浄講習 月間損益貢献</span><span class="bv" id="cl-clean-profit">—</span></div>
+  <div class="br"><span class="bl">固定費の削減効果（取付が半分負担になる分）</span><span class="bv" id="cl-fixed-benefit">—</span></div>
+  <div class="br tot"><span class="bl">合算 月間損益（取付+洗浄）</span><span class="bv" id="cl-total-profit">—</span></div>
+  <div class="br"><span class="bl">合算 年間損益（×12）</span><span class="bv" id="cl-total-annual">—</span></div>
+</div>
+
+</div><!-- end pane-cleaning -->
+
+</div><!-- end page -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const g=id=>parseFloat(document.getElementById(id).value)||0;
+const fmt=n=>Math.round(n).toLocaleString('ja-JP')+'円';
+const fmtS=n=>(n>=0?'+':'')+Math.round(n).toLocaleString('ja-JP')+'円';
+const el=id=>document.getElementById(id);
+
+function sw(id,e){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  e.target.classList.add('active');
+  el('pane-'+id).classList.add('active');
+  if(id==='cleaning') calcCleaning();
+}
+
+/* sync functions */
+function syncO(v){el('osaka-n').value=v;calc();}
+function syncON(v){v=Math.min(8,Math.max(2,parseInt(v)||2));el('osaka-n').value=v;el('osaka-r').value=v;calc();}
+function syncS(v){el('saitama-n').value=v;calc();}
+function syncSN(v){v=Math.min(10,Math.max(2,parseInt(v)||2));el('saitama-n').value=v;el('saitama-r').value=v;calc();}
+function syncRem(v){el('remote-pct').value=v;calc();}
+function syncRemN(v){el('remote-r').value=Math.min(100,Math.max(0,v));calc();}
+function syncTN(v){el('trans-n').value=v;calc();}
+function syncTNN(v){v=Math.min(4,Math.max(1,parseInt(v)||1));el('trans-n').value=v;el('trans-n-r').value=v;calc();}
+function syncHotel(v){el('hotel').value=v;calc();}
+function syncHotelN(v){el('hotel-r').value=Math.min(60000,Math.max(0,v));calc();}
+function syncAds(v){el('ads').value=v;calc();}
+function syncAdsN(v){el('ads-r').value=Math.min(200000,Math.max(0,v));calc();}
+function syncAirbnb(v){el('airbnb').value=v;calc();}
+function syncAirbnbN(v){el('airbnb-r').value=Math.min(300000,Math.max(0,v));calc();}
+function syncSubG(v){el('sub-grad').value=v;calc();}
+function syncSubGN(v){el('sub-grad-r').value=Math.min(100,Math.max(0,v));calc();}
+function syncSubB(v){el('sub-basic').value=v;calc();}
+function syncSubBN(v){el('sub-basic-r').value=Math.min(200,Math.max(0,v));calc();}
+function syncSubBiz(v){el('sub-biz').value=v;calc();}
+function syncSubBizN(v){el('sub-biz-r').value=Math.min(200,Math.max(0,v));calc();}
+function syncCLN(v){el('cl-n').value=v;calcCleaning();}
+function syncCLNN(v){el('cl-n-r').value=Math.min(18,Math.max(2,parseInt(v)||2));calcCleaning();}
+function syncCLSB(v){el('cls-basic').value=v;calcCleaning();}
+function syncCLSBN(v){el('cls-basic-r').value=Math.min(200,Math.max(0,v));calcCleaning();}
+function syncCLSF(v){el('cls-full').value=v;calcCleaning();}
+function syncCLSFN(v){el('cls-full-r').value=Math.min(200,Math.max(0,v));calcCleaning();}
+
+/* 変動費/名 */
+function varPP(n,price,discount,remotePct,cardPct){
+  const pairs=Math.floor(n/2);
+  const pairUnit=g('pair-unit');
+  const matPair=(pairUnit*5)+(200*6);
+  const matP=(matPair*pairs/n)+60+310+150+200+400;
+  const remN=Math.round(n*remotePct);
+  const cardN=Math.round(n*cardPct);
+  const bankN=n-cardN;
+  const feeP=(price*0.036*cardN+price*0.015*bankN)/n;
+  const discP=discount*remN/n;
+  return matP+1250+1100+feeP+discP;
+}
+function revPP(price,discount,remotePct,cardPct,n){
+  const remN=Math.round(n*remotePct);
+  const cardN=Math.round(n*cardPct);
+  const bankN=n-cardN;
+  const feeP=(price*0.036*cardN+price*0.015*bankN)/n;
+  const discP=discount*remN/n;
+  return price-discP-feeP;
+}
+
+let bepChart=null;
+let lastProfit=0;
+let lastFixed=0;
+
+function calc(){
+  const oN=Math.min(8,Math.max(2,parseInt(el('osaka-n').value)||2));
+  const sN=Math.min(10,Math.max(2,parseInt(el('saitama-n').value)||2));
+  el('osaka-note').textContent=oN+'名 → '+Math.floor(oN/2)+'ペア';
+  el('saitama-note').textContent=sN+'名 → '+Math.floor(sN/2)+'ペア';
+  const totalN=oN+sN;
+  const price=g('price');const discount=g('discount');
+  const remotePct=g('remote-pct')/100;const cardPct=g('card-pct')/100;
+
+  const transTotal=g('trans-unit')*g('trans-n');
+  el('disp-trans').textContent=fmt(transTotal);
+  const hotel=g('hotel');
+
+  const fixed=g('labor')+transTotal+hotel+g('venue')+g('wifi')+g('equip')+g('ads')+g('platform')+g('misc')+1000*3*2;
+  lastFixed=fixed;
+
+  const subGrad=g('sub-grad')*980;
+  const subBasic=g('sub-basic')*2980;
+  const subBiz=g('sub-biz')*4980;
+  el('disp-sub-grad').textContent=fmt(subGrad);
+  el('disp-sub-basic').textContent=fmt(subBasic);
+  el('disp-sub-biz').textContent=fmt(subBiz);
+  const extra=subGrad+subBasic+subBiz+g('airbnb')+g('media-n')*g('media-p');
+
+  const vpP=varPP(totalN,price,discount,remotePct,cardPct);
+  const rvP=revPP(price,discount,remotePct,cardPct,totalN);
+  const contP=rvP-vpP;
+  const netFixed=Math.max(0,fixed-extra);
+  const bepN=contP>0?Math.ceil(netFixed/contP):9999;
+  const oR=oN/(oN+sN);
+  const bepO=Math.ceil(bepN*oR);
+  const bepS=Math.max(0,bepN-bepO);
+  const totalRev=rvP*totalN;
+  const totalVar=vpP*totalN;
+  const profit=totalRev+extra-totalVar-fixed;
+  lastProfit=profit;
+  const fillPct=bepN<9999?Math.min(100,Math.max(0,Math.round((totalN/bepN)*100))):100;
+  const isP=profit>=0;
+
+  /* 限界利益カード（受講料セクション横） */
+  const pairs=Math.floor(totalN/2);
+  const pairUnit=g('pair-unit');
+  const matPair=(pairUnit*5)+(200*6);
+  const matPP=(matPair*pairs/totalN)+60+310+150+200+400;
+  const remN2=Math.round(totalN*(g('remote-pct')/100));
+  const cardN2=Math.round(totalN*(g('card-pct')/100));
+  const bankN2=totalN-cardN2;
+  const feePP=(price*0.036*cardN2+price*0.015*bankN2)/totalN;
+  const discPP=discount*remN2/totalN;
+
+  el('li-price').textContent=fmt(price);
+  el('li-disc').textContent='−'+fmt(discPP);
+  el('li-fee').textContent='−'+fmt(feePP);
+  el('li-rev').textContent=fmt(rvP);
+  el('li-mat').textContent=fmt(matPP);
+  el('li-var').textContent=fmt(vpP);
+  el('li-margin').textContent=fmt(contP);
+
+  /* メトリクス */
+  el('m-fixed').textContent=fmt(fixed);
+  el('m-var').textContent=fmt(vpP);
+  el('m-extra').textContent=fmt(extra);
+  el('m-cont').textContent=fmt(contP);
+
+  /* BEP詳細 */
+  el('bd-fixed').textContent=fmt(fixed);
+  el('bd-trans').textContent=fmt(transTotal);
+  el('bd-hotel').textContent=fmt(hotel);
+  el('bd-extra').textContent=fmt(extra);
+  el('bd-netfixed').textContent=fmt(netFixed);
+  el('bd-cont').textContent=fmt(contP);
+  el('bd-bep').textContent=bepN>=9999?'追加収入だけで黒字':bepN+'名';
+  el('bd-o-min').textContent=bepO+'名以上';
+  el('bd-s-min').textContent=bepS+'名以上';
+  el('bd-o-pct').textContent=Math.round(bepO/8*100)+'%（'+bepO+'/8名）';
+  el('bd-s-pct').textContent=Math.round(bepS/10*100)+'%（'+bepS+'/10名）';
+
+  el('sbar-lbl').textContent='充填率：'+totalN+'名 / BEP '+bepN+'名（'+fillPct+'%）';
+  const sf=el('sbar-fill');sf.style.width=fillPct+'%';sf.style.background=isP?'#639922':'#E24B4A';
+  const st=el('sbar-txt');st.textContent=fillPct+'%';st.style.color=isP?'#3B6D11':'#A32D2D';
+
+  el('bd-rev').textContent=fmt(totalRev);
+  el('bd-extra2').textContent=fmt(extra);
+  el('bd-varT').textContent=fmt(totalVar);
+  el('bd-fixedT').textContent=fmt(fixed);
+  const pEl=el('bd-profit');pEl.textContent=fmtS(profit);pEl.style.color=isP?'#3B6D11':'#A32D2D';
+  el('bd-annual').textContent=fmtS(profit*12);
+
+  const nEl=el('bep-notice');
+  if(bepN>=9999){nEl.className='notice ok';nEl.textContent='追加収入（'+fmt(extra)+'）だけで固定費を賄える状態です。';}
+  else if(isP){nEl.className='notice ok';nEl.textContent='受講者'+totalN+'名で損益分岐点（'+bepN+'名）超え。月間'+fmt(profit)+'の黒字。';}
+  else{nEl.className='notice ng';nEl.textContent='損益分岐点まであと'+(bepN-totalN)+'名必要。現在月間'+fmt(-profit)+'の赤字。';}
+
+  /* 生徒費用パネル */
+  el('ps-pair').textContent=fmt(pairUnit*5/2)+'（参考：'+pairUnit+'円/m×2.5m）';
+  el('ps-vvf').textContent=fmt(200*6/2)+'（200円/m×3m）';
+  el('ps-mat').textContent=fmt(matPP);
+  el('ps-disc').textContent='−'+fmt(discPP);
+  el('ps-fee').textContent='−'+fmt(feePP);
+  el('ps-pay').textContent='−'+fmt(discPP+feePP);
+  el('ps-total-v').textContent=fmt(vpP);
+  el('ps-rev').textContent=fmt(rvP);
+  el('ps-var2').textContent=fmt(vpP);
+  el('ps-margin').textContent=fmt(contP);
+
+  /* チャート */
+  const maxN=18;const labels=[];const rL=[];const cL=[];const pL=[];
+  for(let n=2;n<=maxN;n+=2){
+    labels.push(n+'名');
+    const rv=revPP(price,discount,remotePct,cardPct,n)*n+extra;
+    const vv=varPP(n,price,discount,remotePct,cardPct)*n;
+    rL.push(Math.round(rv/10000));cL.push(Math.round((vv+fixed)/10000));pL.push(Math.round((rv-vv-fixed)/10000));
+  }
+  if(bepChart)bepChart.destroy();
+  bepChart=new Chart(el('bepChart'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'売上+追加収入（万円）',data:rL,borderColor:'#3B6D11',borderWidth:2,pointBackgroundColor:'#3B6D11',pointRadius:3,tension:.3,fill:false},
+      {label:'総コスト（万円）',data:cL,borderColor:'#A32D2D',borderWidth:2,pointBackgroundColor:'#A32D2D',pointRadius:3,tension:.3,borderDash:[4,3],fill:false},
+      {label:'損益（万円）',data:pL,borderColor:'#185FA5',borderWidth:1.5,pointBackgroundColor:'#185FA5',pointRadius:3,tension:.3,borderDash:[2,2],fill:false},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+ctx.parsed.y+'万円'}}},
+      scales:{
+        x:{grid:{color:'rgba(0,0,0,0.07)'},ticks:{color:'#5F5E5A',font:{size:11}}},
+        y:{grid:{color:'rgba(0,0,0,0.07)'},ticks:{color:'#5F5E5A',font:{size:11},callback:v=>v+'万'}}
+      }
+    }
+  });
+  el('chart-legend').innerHTML=[
+    {c:'#3B6D11',l:'売上+追加収入',dash:false},{c:'#A32D2D',l:'総コスト',dash:true},{c:'#185FA5',l:'損益',dash:true}
+  ].map(i=>`<span style="display:flex;align-items:center;gap:4px"><span style="width:20px;height:2px;background:${i.c};display:inline-block;${i.dash?'border-top:2px dashed '+i.c+';background:none':''}"></span><span style="font-size:12px;color:#5F5E5A">${i.l}</span></span>`).join('');
+
+  /* 洗浄タブの比較カードも更新 */
+  el('cl-fixed-before').textContent=fmt(fixed);
+  el('cl-per-before').textContent=fmt(fixed/2)+'（2回で割算）';
+  const halfFixed=fixed/2;
+  el('cl-fixed-after').textContent=fmt(halfFixed);
+  el('cl-per-after').textContent=fmt(fixed/4)+'（4回で割算）';
+  el('cl-saving').textContent='月 '+fmt(halfFixed)+' の削減';
+  el('cl-m-fixed').textContent=fmt(halfFixed);
+  el('cl-install-profit').textContent=fmtS(lastProfit);
+}
+
+function calcCleaning(){
+  const clN=Math.min(18,Math.max(2,parseInt(el('cl-n').value)||2));
+  el('cl-n-r').value=clN;
+  const clPrice=g('cl-price');
+  const clRev=clPrice*clN;
+  const clSub=g('cls-basic')*2980+g('cls-full')*4980;
+  el('disp-cls-basic').textContent=fmt(g('cls-basic')*2980);
+  el('disp-cls-full').textContent=fmt(g('cls-full')*4980);
+
+  const halfFixed=lastFixed/2;
+  const clLaborHalf=g('cl-labor');
+  const clVarPP=2000;
+  const clTotalVar=clVarPP*clN;
+  const clExtra=clSub;
+  const clProfit=clRev+clExtra-clTotalVar-clLaborHalf;
+  const totalProfit=lastProfit+clProfit+halfFixed;
+
+  el('cl-m-fixed').textContent=fmt(halfFixed);
+  el('cl-m-extra').textContent=fmt(clSub);
+  el('cl-m-rev').textContent=fmt(clRev);
+  el('cl-m-profit').textContent=fmtS(clProfit);
+
+  el('cl-install-profit').textContent=fmtS(lastProfit);
+  const fixedBenefit=halfFixed;
+  el('cl-clean-profit').textContent=fmtS(clProfit);
+  el('cl-fixed-benefit').textContent=fmt(fixedBenefit)+'（取付側の固定費負担軽減分）';
+
+  const total=lastProfit+clProfit+fixedBenefit;
+  const totEl=el('cl-total-profit');
+  totEl.textContent=fmtS(total);
+  totEl.style.color=total>=0?'#3B6D11':'#A32D2D';
+  el('cl-total-annual').textContent=fmtS(total*12);
+
+  el('cl-fixed-before').textContent=fmt(lastFixed);
+  el('cl-per-before').textContent=fmt(lastFixed/2)+'（2回で割算）';
+  const half=lastFixed/2;
+  el('cl-fixed-after').textContent=fmt(half);
+  el('cl-per-after').textContent=fmt(lastFixed/4)+'（4回で割算）';
+  el('cl-saving').textContent='月 '+fmt(half)+' の削減';
+}
+
+calc();
+</script>
+</body>
+</html>
